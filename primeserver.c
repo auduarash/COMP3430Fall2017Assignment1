@@ -35,7 +35,7 @@ int main() {
 
     mkfifo(PRIME_FIFO, 0666);
 
-    fd = open(PRIME_FIFO, O_RDWR);
+    fd = open(PRIME_FIFO, O_RDONLY);
     printf("I am a blocking bad boy\n");
     while ( read(fd, buf, MAX_BUF) > 0 ) {
         printf("I am a Sabaton\n");
@@ -44,4 +44,5 @@ int main() {
     close(fd);
 
     return 0;
+
 }
