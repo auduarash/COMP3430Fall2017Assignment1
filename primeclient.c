@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #define MAX_BUF 1024
+#define PRIME_FIFO "./primeserver"
 
 void print_invalid_arguments(char *program_executable){
     fprintf(stderr, "Usage: %s [-c clientNum]\n", program_executable);
@@ -38,6 +39,8 @@ int main(int argc, char *argv[]) {
 
     printf("Client number is %d.\n", clientNum);
     
+    int primeServerFd;
+    char buf[MAX_BUF];
 
     return 0;
 }
