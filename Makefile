@@ -17,4 +17,4 @@ primeclient.o: primeclient.c
 	gcc -Wall -c primeclient.c 
 
 run_client: client
-	echo "Starting client" && ./client -c 0
+	echo "Starting client" && ./client -c 5
