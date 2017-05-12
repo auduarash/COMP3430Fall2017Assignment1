@@ -9,6 +9,7 @@
 
 #define MAX_BUF 1024
 #define PRIME_FIFO "./primeserver"
+#define CLIENT_FIFO "./primeclient"
 char client_fifo_name[15];
 int prime_server_fd;
 int prime_client_fd;
@@ -21,8 +22,11 @@ void print_invalid_arguments(char *program_executable){
 
 void signal_handler(int signum) {
     printf("Received signal %d. Now terminating.\n", signum);
-    unlink("./primeclient5");
+    char client_name[] = CLIENT_FIFO;
+    client_name[13] = client_id + '0';
     close(prime_server_fd);
+    close(prime_client_fd);
+    unlink(client_name);
     exit(EXIT_SUCCESS);
 }
 

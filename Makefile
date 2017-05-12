@@ -17,4 +17,16 @@ primeclient.o: primeclient.c
 	gcc -Wall -c primeclient.c 
 
 run_client: client
-	echo "Starting client" && ./client -c 5
+	for x in $$(seq 0 9); do ./client -c $$x & done
+
+clean_client: 
+	killall client
+
+clean_objects:
+	rm -rf *.o 
+
+clean_executables:
+	rm -rf main server client primeserver
+
+clean:
+	make clean_client && make clean_objects && make clean_executables
