@@ -2,4 +2,5 @@
 .vscode*
 client
 server
-*.o
+primeclient.o
+primeserver.o
