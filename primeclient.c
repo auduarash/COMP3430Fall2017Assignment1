@@ -20,6 +20,9 @@ void print_invalid_arguments(char *program_executable){
     exit(EXIT_FAILURE);
 }
 
+void handle_message(char buf[], int message_size);
+int number_is_prime(int number);
+
 void signal_handler(int signum) {
     printf("Received signal %d. Now terminating.\n", signum);
     char client_name[] = CLIENT_FIFO;

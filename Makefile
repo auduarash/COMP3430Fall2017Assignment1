@@ -20,7 +20,10 @@ run_client: client
 	for x in $$(seq 0 9); do ./client -c $$x & done
 
 clean_client: 
-	killall client
+	killall client || true
+
+clean_server:
+	killall server || true
 
 clean_objects:
 	rm -rf *.o 
@@ -29,4 +32,4 @@ clean_executables:
 	rm -rf main server client primeserver
 
 clean:
-	make clean_client && make clean_objects && make clean_executables
+	make clean_client && make clean_server && make clean_objects && make clean_executables
