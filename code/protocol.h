@@ -24,6 +24,8 @@ message_info decode_message(char buf[], int message_length);
     Server methods
 */
 message_info decode_server_message(char buf[], int message_length);
+int extract_prime_from_message(char buf[], int message_length);
+void send_number_to_client(int number, int client_id);
 
 /*
     Client methods

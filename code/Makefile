@@ -35,7 +35,7 @@ clean_client:
 	killall client || for x in $$(seq 0 9); do rm -rf primeclient$$x; done
 
 clean_server:
-	rm -rf primeserver
+	killall server || rm -rf primeserver
 
 clean_objects:
 	rm -rf *.o 

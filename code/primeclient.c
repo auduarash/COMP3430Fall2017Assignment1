@@ -12,7 +12,7 @@ char client_fifo_name[15] = "./primeclientx";
 int client_id;
 
 
-void parse_buffer_messages(char buf[], int message_size) {
+void parse_buffer_message(char buf[], int message_size) {
     message_info decoded = decode_message(buf, message_size);
     if (decoded == 0) return;
     else if (decoded->prime_number > 0) {
@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
 
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
+    signal(SIGPIPE, signal_handler);
 
     int client_id = get_client_id(argc, argv);
     if (client_id == -1) { 
@@ -66,8 +67,7 @@ int main(int argc, char *argv[]) {
     int server_message_size;
     
     while ( (server_message_size = read(prime_client_fd, buf, MAX_BUF)) > 0 ) {
-        printf("Got message back %s \n", buf);
-        parse_buffer_messages(buf, server_message_size);
+        parse_buffer_message(buf, server_message_size);
         send_prime_request_to_server(client_id);
     }
     return 0;
