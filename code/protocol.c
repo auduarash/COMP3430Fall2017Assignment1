@@ -1,3 +1,13 @@
+/**
+    Name: Abdul-Rasheed Audu
+    Student Number: 7779308
+    File Name: protocol.h
+    Purpose: Contains implementations of methods used by a server
+                and it's numerous clients for encoding, sending 
+                and decoding messages.
+*/
+
+
 #include "protocol.h"
 
 
@@ -52,17 +62,13 @@ message_info decode_server_message(char buf[], int message_length) {
 void send_prime_number_to_server(int prime_number, int client_id) {
     char server_buffer[20];
     sprintf(server_buffer, "!%dP%d?", client_id, prime_number);
-    int prime_server_fd = open(PRIME_FIFO, O_WRONLY);
-    write(prime_server_fd, server_buffer, strlen(server_buffer));
-    close(prime_server_fd);
+    write(server_fifo_fd, server_buffer, strlen(server_buffer));
 }
 
 void send_prime_request_to_server(int client_id) {
     char prime_request[5];
     sprintf(prime_request, "!%dR?", client_id);
-    int prime_server_fd = open(PRIME_FIFO, O_WRONLY);
-    write(prime_server_fd, prime_request, 4);
-    close(prime_server_fd);
+    write(server_fifo_fd, prime_request, 4);
 }
 
 int is_number_prime(int number) {
@@ -75,8 +81,9 @@ int is_number_prime(int number) {
 }
 
 void send_number_to_client(int number, int client_id) {
-    char client_name[15] = "./primeclient#";
-    client_name[13] = '0' + client_id;
+
+    char client_name[15];
+    get_client_fifo_name_for_client_id(client_name, client_id);
     char client_buffer[20];
     sprintf(client_buffer, "!SQ%d?", number);
 
@@ -89,4 +96,10 @@ int extract_prime_from_message(char buf[], int message_length) {
     buf[message_length-1] = '\0';
     int prime = atoi(buf+3);
     return prime;
+}
+
+
+void get_client_fifo_name_for_client_id(char client_name[], int client_id) {
+    strcpy(client_name, "./primeclient#");
+    client_name[13] = '0' + client_id;
 }

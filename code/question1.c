@@ -1,9 +1,13 @@
 /**
-    NAME: Abdul-Rasheed Audu
+    Name: Abdul-Rasheed Audu
     Student Number: 7779308
-    Course: COMP 3430 - Operating Systems
-    Topic: Assignment 1
-    Description: //TODO
+    File Name: q1.c
+    Purpose: A process that reads in a command as a command line 
+                argument. It runs the command as well as any parameters
+                passed to the command by callng a child process to execute
+                In the event that the output contains the text cat, dog 
+                will be printed instead.
+
 */
 
 #include <sys/types.h>
@@ -106,3 +110,4 @@ int main(int argc, char *argv[]){
     }
 
 }
+

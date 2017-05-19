@@ -1,3 +1,14 @@
+/**
+    Name: Abdul-Rasheed Audu
+    Student Number: 7779308
+    File Name: primeserver.c
+    Purpose: A process that iterates over integers and
+                sends them over to clients to confirm
+                whether or not these integers are prime
+                numbers.
+*/
+
+
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -81,3 +92,5 @@ int main(int argc, char *argv[]) {
     return 0;
 
 }
+
+

@@ -1,3 +1,13 @@
+/**
+    Name: Abdul-Rasheed Audu
+    Student Number: 7779308
+    File Name: primeclient.c
+    Purpose: A process that receives an encoded message from
+                a server which contains a prime. This process
+                verifies the number is a prime and returns an 
+                encoded message to the server.
+*/
+
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -11,6 +21,21 @@
 char client_fifo_name[15] = "./primeclientx";
 int client_id;
 
+
+void signal_handler(int signum) {
+    close(server_fifo_fd);
+    unlink(client_fifo_name);
+    exit(EXIT_SUCCESS);
+}
+
+void check_server_fifo_exists(){
+    struct stat info;
+    if (lstat("./primeserver", &info) != 0){
+        perror("There was an error opening server fifo");
+        signal_handler(0);
+    }
+
+}
 
 void parse_buffer_message(char buf[], int message_size) {
     message_info decoded = decode_message(buf, message_size);
@@ -27,10 +52,7 @@ void print_invalid_arguments_and_exit(char *program_executable){
 }
 
 
-void signal_handler(int signum) {
-    unlink(client_fifo_name);
-    exit(EXIT_SUCCESS);
-}
+
 
 int get_client_id(int argc, char *argv[]) {
     int opt, client_id = -1;
@@ -49,7 +71,7 @@ int get_client_id(int argc, char *argv[]) {
 
 
 int main(int argc, char *argv[]) {
-
+    signal(0, signal_handler);
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
     signal(SIGPIPE, signal_handler);
@@ -61,6 +83,10 @@ int main(int argc, char *argv[]) {
     client_fifo_name[13] = '0'+client_id;
     char buf[MAX_BUF];
 
+    check_server_fifo_exists();
+    if ((server_fifo_fd = open("./primeserver", O_WRONLY)) == -1) {
+        perror("Could not open server fifo");
+    }
     send_prime_request_to_server(client_id);
     mkfifo(client_fifo_name, 0666);
     int prime_client_fd = open(client_fifo_name, O_RDWR);
@@ -72,3 +98,4 @@ int main(int argc, char *argv[]) {
     }
     return 0;
 }
+

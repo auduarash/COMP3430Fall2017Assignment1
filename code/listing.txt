@@ -1,0 +1,447 @@
+/**
+    Name: Abdul-Rasheed Audu
+    Student Number: 7779308
+    File Name: primeclient.c
+    Purpose: A process that receives an encoded message from
+                a server which contains a prime. This process
+                verifies the number is a prime and returns an 
+                encoded message to the server.
+*/
+
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <signal.h>
+#include "protocol.h"
+
+char client_fifo_name[15] = "./primeclientx";
+int client_id;
+
+
+void parse_buffer_message(char buf[], int message_size) {
+    message_info decoded = decode_message(buf, message_size);
+    if (decoded == 0) return;
+    else if (decoded->prime_number > 0) {
+        send_prime_number_to_server(decoded->prime_number, client_id);
+    }
+}
+
+
+void print_invalid_arguments_and_exit(char *program_executable){
+    fprintf(stderr, "Usage: %s [-c clientNum]\n", program_executable);
+    exit(EXIT_FAILURE);
+}
+
+
+void signal_handler(int signum) {
+    unlink(client_fifo_name);
+    exit(EXIT_SUCCESS);
+}
+
+int get_client_id(int argc, char *argv[]) {
+    int opt, client_id = -1;
+    while ((opt = getopt(argc, argv, "c:")) != -1){
+        switch (opt) {
+            case 'c':
+                client_id = atoi(optarg);
+                break;
+            default:
+                break;
+
+        }
+    }
+    return client_id;
+}
+
+
+int main(int argc, char *argv[]) {
+
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+    signal(SIGPIPE, signal_handler);
+
+    int client_id = get_client_id(argc, argv);
+    if (client_id == -1) { 
+        print_invalid_arguments_and_exit(argv[0]);
+    }
+    client_fifo_name[13] = '0'+client_id;
+    char buf[MAX_BUF];
+
+    send_prime_request_to_server(client_id);
+    mkfifo(client_fifo_name, 0666);
+    int prime_client_fd = open(client_fifo_name, O_RDWR);
+    int server_message_size;
+    
+    while ( (server_message_size = read(prime_client_fd, buf, MAX_BUF)) > 0 ) {
+        parse_buffer_message(buf, server_message_size);
+        send_prime_request_to_server(client_id);
+    }
+    return 0;
+}
+
+/**
+    Name: Abdul-Rasheed Audu
+    Student Number: 7779308
+    File Name: primeserver.c
+    Purpose: A process that iterates over integers and
+                sends them over to clients to confirm
+                whether or not these integers are prime
+                numbers.
+*/
+
+
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <string.h>
+#include "protocol.h"
+
+#define MAX_BUF 1024
+#define PRIME_FIFO "./primeserver"
+#define CLIENT_FIFO "./primeclient5"
+
+int num_to_check = 1;
+int highest_prime = 1;
+
+void handle_message(char buf[], int message_size);
+void signal_handler(int signum);
+void parse_buffer_messages(char buf[], int message_size);
+
+
+void signal_handler(int signum) {
+    unlink(PRIME_FIFO);
+    exit(EXIT_SUCCESS);
+}
+
+void parse_buffer_messages(char buf[], int message_size) {
+    //printf("Parsing %s %d \n", buf, num_to_check);
+    int index = 0;
+    while (index < message_size) {
+        if ( buf[index] == '!' ) { //start of message
+            int messageStart = index;
+            while (buf[index] != '?' && index < message_size) {
+                index++;
+            }
+            if (index < message_size) {
+                handle_message(buf+messageStart, index-messageStart+1);
+            }
+        }
+        index++;
+    }
+}
+
+void handle_message(char buf[], int message_size) {
+    message_info info = decode_message(buf, message_size);
+    if (info) {
+        if (info->prime_number > 0){
+            if (info->prime_number > highest_prime) {
+                highest_prime = info->prime_number + 1;
+                printf("%d is a prime number\n", info->prime_number);
+            }
+        } else {
+            send_number_to_client(num_to_check++, info->client_number);
+        }
+    }
+}
+
+
+int main(int argc, char *argv[]) {
+
+    signal(SIGINT, signal_handler);
+    signal(SIGTERM, signal_handler);
+    signal(SIGPIPE, signal_handler);
+
+
+    int fd;
+    char buf[MAX_BUF];
+    int client_message_size;
+
+
+    mkfifo(PRIME_FIFO, 0666);
+
+    fd = open(PRIME_FIFO, O_RDWR);
+    while ( (client_message_size = read(fd, buf, MAX_BUF)) > 0 ) {
+        parse_buffer_messages(buf, client_message_size);
+    }
+
+    close(fd);
+
+    return 0;
+
+}
+
+
+/**
+    Name: Abdul-Rasheed Audu
+    Student Number: 7779308
+    File Name: protocol.h
+    Purpose: Contains implementations of methods used by a server
+                and it's numerous clients for encoding, sending 
+                and decoding messages.
+*/
+
+
+#include "protocol.h"
+
+
+message_info new_message() {
+    message_info new_m = (message_info) malloc(sizeof(struct MESSAGE_INFO));
+    new_m->client_number = -1;
+    new_m->prime_number = -1;
+    return new_m;
+}
+
+message_info decode_message(char buf[], int message_length) {
+    char sender = buf[1];
+    if (sender == 'S') {
+        return decode_client_message(buf, message_length);
+    } else if ('0' <= sender && sender <= '9') {
+        return decode_server_message(buf, message_length);
+    } else {
+        return 0; //Invalid command
+    }
+}
+
+message_info decode_client_message(char buf[], int message_length) {
+    char command = buf[2];
+    if (command == 'Q') {
+        buf[message_length-1] = '\0';
+        int prime_number = atoi(buf+3);
+        int is_prime = is_number_prime(prime_number);
+        message_info result = new_message();
+        if (is_prime) result->prime_number = prime_number;
+        return result;
+    } else {
+        return 0;
+    }
+}
+
+message_info decode_server_message(char buf[], int message_length) {
+    char command = buf[2];
+    int client_id = buf[1] - '0';
+    message_info server_message = new_message();
+    if (command == 'R') {
+        server_message->client_number = client_id;
+    } else if (command == 'P') {
+        int prime = extract_prime_from_message(buf, message_length);
+        server_message->prime_number = prime;
+        server_message->client_number = client_id;
+    } else {
+        server_message = 0;
+    }
+    return server_message;
+}
+
+void send_prime_number_to_server(int prime_number, int client_id) {
+    char server_buffer[20];
+    sprintf(server_buffer, "!%dP%d?", client_id, prime_number);
+    int prime_server_fd = open(PRIME_FIFO, O_WRONLY);
+    write(prime_server_fd, server_buffer, strlen(server_buffer));
+    close(prime_server_fd);
+}
+
+void send_prime_request_to_server(int client_id) {
+    char prime_request[5];
+    sprintf(prime_request, "!%dR?", client_id);
+    int prime_server_fd = open(PRIME_FIFO, O_WRONLY);
+    write(prime_server_fd, prime_request, 4);
+    close(prime_server_fd);
+}
+
+int is_number_prime(int number) {
+    int factors = 0;
+    int i;
+    for (i = 1; i <= number; i++) {
+        if (number % i == 0) factors += 1;
+    }
+    return  factors==2 ? 1 : 0;
+}
+
+void send_number_to_client(int number, int client_id) {
+    char client_name[15] = "./primeclient#";
+    client_name[13] = '0' + client_id;
+    char client_buffer[20];
+    sprintf(client_buffer, "!SQ%d?", number);
+
+    int client_fd = open(client_name, O_WRONLY);
+    write(client_fd, client_buffer, strlen(client_buffer));
+    close(client_fd);
+}
+
+int extract_prime_from_message(char buf[], int message_length) {
+    buf[message_length-1] = '\0';
+    int prime = atoi(buf+3);
+    return prime;
+}
+
+
+/**
+    Name: Abdul-Rasheed Audu
+    Student Number: 7779308
+    File Name: q1.c
+    Purpose: A process that reads in a command as a command line 
+                argument. It runs the command as well as any parameters
+                passed to the command by callng a child process to execute
+                In the event that the output contains the text cat, dog 
+                will be printed instead.
+
+*/
+
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <fcntl.h>
+
+
+
+int main(int argc, char *argv[]){
+    int pipefd[2];
+    pid_t cpid;
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <string> [<args>]\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    if (pipe(pipefd) == -1) {
+        perror("pipe");
+        exit(EXIT_FAILURE);
+    }
+
+    cpid = fork();
+    if (cpid == -1) {
+        perror("fork");
+        exit(EXIT_FAILURE);
+    }
+    if (cpid == 0) { //Child process runs here
+
+        dup2(pipefd[1], STDOUT_FILENO);
+        //exit if exec fails
+        if (execvp(argv[1], &argv[1]) < 0){
+            fprintf(stderr, "Error: exec failed\n");
+            exit(EXIT_FAILURE);
+        }
+
+    } else { 
+        int current_state = 0;
+        char one;
+        char cat_buffer[3] = {0, 0, 0};
+        int cat_buffer_size = 0;
+
+        close(pipefd[1]);//we are not using the write end of the pipe
+
+        FILE* raw_file = fopen("./raw.log", "w");
+
+        while (read(pipefd[0], &one, 1) > 0){
+
+            /*
+                State machine states
+                0 - Invalid state
+                1 - Last character was a c
+                2 - Last character was an a
+
+                If c and|or a are entered, cat_buffer is used to store both
+                characters in the event that the word does not end up being 
+                cat. In which case, either c or a is output.
+                The buffer is also necessary since we can't tell if the c
+                or the a is upper or lower case
+            */
+            fprintf(raw_file, "%c", one);
+            if (one == 'c' || one == 'C'){
+
+                current_state = 1;
+                cat_buffer[0] = one;
+                cat_buffer_size = 1;
+
+            } else if ((one == 'a' || one == 'A') && current_state == 1) {
+
+                current_state = 2;
+                cat_buffer[1] = one;
+                cat_buffer_size = 2;
+
+            } else if ((one == 't' || one == 'T') && current_state == 2) {
+
+                //TODO find a way to do what he wants
+                write(STDOUT_FILENO, "dog", 3);
+                current_state = 0;
+
+            } else {
+
+                if (current_state != 0){
+                    current_state = 0;
+                    write(STDOUT_FILENO, cat_buffer, cat_buffer_size);
+                    cat_buffer_size = 0;
+                }
+                write(STDOUT_FILENO, &one, 1);
+
+            }
+        }
+        close(pipefd[0]); //we are done with the read end of the pipe
+        fclose(raw_file);
+
+        while (wait(NULL) != cpid); //wait for child process to exit
+
+        exit(EXIT_SUCCESS);
+    }
+
+}
+
+/**
+    Name: Abdul-Rasheed Audu
+    Student Number: 7779308
+    File Name: protocol.h
+    Purpose: Contains declarations for methods used by a server
+                and it's numerous clients for encoding, sending 
+                and decoding messages.
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+
+
+#include <string.h>
+#include <unistd.h>
+#define MAX_BUF 1024
+#define PRIME_FIFO "./primeserver"
+
+
+/**
+    Message info struct
+
+*/
+typedef struct MESSAGE_INFO *message_info;
+struct MESSAGE_INFO {
+    int client_number; //client who sent message. -1 if not needed receives the message
+    int prime_number; //-1 if number is not prime. Otherwise prime is given
+};
+message_info new_message();
+
+message_info decode_message(char buf[], int message_length);
+
+/*
+    Server methods
+*/
+message_info decode_server_message(char buf[], int message_length);
+int extract_prime_from_message(char buf[], int message_length);
+void send_number_to_client(int number, int client_id);
+
+/*
+    Client methods
+*/
+message_info decode_client_message(char buf[], int message_length);
+void send_prime_request_to_server(int client_id);
+void send_prime_number_to_server(int prime_number, int client_id);
+
+int is_number_prime(int number);
+

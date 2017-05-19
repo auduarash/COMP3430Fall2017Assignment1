@@ -1,14 +1,28 @@
+
+
+#
+#    Name: Abdul-Rasheed Audu
+#    Student Number: 7779308
+#    File Name: Makefile
+#    Purpose: Contains declarations for methods used by a server
+#                and it's numerous clients for encoding, sending 
+#                and decoding messages.
+#
+
 CC=gcc
 CFLAGS=-Wall
 
-q1: main.o
-	$(CC) $(CFLAGS) main.o -o q1
+run_q1: q1
+	./q1 lynx lolcats.com
 
-main.o: main.c
-	$(CC) $(CFLAGS) -c main.c
+q1: qusetion1.o
+	$(CC) $(CFLAGS) question1.o -o q1
+
+qusetion1.o: question1.c
+	$(CC) $(CFLAGS) -c question1.c
 
 clean_q1:
-	rm -rf q1
+	rm -rf q1 raw.log
 
 protocol.o: protocol.c protocol.h
 	$(CC) $(CFLAGS) -c protocol.c

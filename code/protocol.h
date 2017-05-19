@@ -1,10 +1,23 @@
+/**
+    Name: Abdul-Rasheed Audu
+    Student Number: 7779308
+    File Name: protocol.h
+    Purpose: Contains declarations for methods used by a server
+                and it's numerous clients for encoding, sending 
+                and decoding messages.
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
+
+
 #include <string.h>
 #include <unistd.h>
 #define MAX_BUF 1024
 #define PRIME_FIFO "./primeserver"
+int server_fifo_fd;
+
 
 
 /**
@@ -35,3 +48,5 @@ void send_prime_request_to_server(int client_id);
 void send_prime_number_to_server(int prime_number, int client_id);
 
 int is_number_prime(int number);
+
+void get_client_fifo_name_for_client_id(char client_name[], int id);
